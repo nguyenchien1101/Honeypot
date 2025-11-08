@@ -1,0 +1,84 @@
+apiVersion: "v1"
+protocol: "http"
+address: ":80"
+description: "WordPress 6.0 Honeypot"
+
+commands:
+  # ---------------------------------------------------------------------------
+  # 1) Trang chính
+  # ---------------------------------------------------------------------------
+  - regex: "^(/|/index\\.php|/index\\.html)$"
+    handler: |
+      <html>
+        <head>
+          <title>WordPress 6 – Test Page</title>
+        </head>
+        <body>
+          <h1>Hello from WordPress</h1>
+        </body>
+      </html>
+    headers:
+      - "Content-Type: text/html; charset=utf-8"
+      - "Server: Apache/2.4.53 (Debian)"
+      - "X-Powered-By: PHP/7.4.29"
+    statusCode: 200
+
+  # ---------------------------------------------------------------------------
+  # 2) /wp-admin*  -> 301 Redirect về /wp-login.php
+  # ---------------------------------------------------------------------------
+  - regex: "^/wp-admin(/.*)?$"
+    headers:
+      - "Location: /wp-login.php"
+      - "Server: Apache/2.4.53 (Debian)"
+      - "X-Powered-By: PHP/7.4.29"
+    statusCode: 301
+
+  # ---------------------------------------------------------------------------
+  # 3) /wp-login.php  -> Form đăng nhập giả
+  # ---------------------------------------------------------------------------
+  - regex: "^/wp-login\\.php$"
+    handler: |
+      <html>
+        <head>
+          <title>WordPress › Log In</title>
+        </head>
+        <body class="login">
+          <h1><a href="https://wordpress.org/">WordPress</a></h1>
+          <form name="loginform" id="loginform" action="/wp-login.php" method="post">
+            <p>
+              <label for="user_login">Username or Email Address</label>
+              <input type="text" name="log" id="user_login" class="input" size="20" />
+            </p>
+            <p>
+              <label for="user_pass">Password</label>
+              <input type="password" name="pwd" id="user_pass" class="input" size="20" />
+            </p>
+            <p class="submit">
+              <input type="submit" name="wp-submit" id="wp-submit" class="button button-primary button-large" value="Log In" />
+            </p>
+          </form>
+        </body>
+      </html>
+    headers:
+      - "Content-Type: text/html; charset=utf-8"
+      - "Server: Apache/2.4.53 (Debian)"
+      - "X-Powered-By: PHP/7.4.29"
+    statusCode: 200
+
+  # ---------------------------------------------------------------------------
+  # 4) Mọi URL khác -> LLMHoneypot (trả 404 HTML)
+  # ---------------------------------------------------------------------------
+  - regex: "^.*$"
+    plugin: "LLMHoneypot"
+    headers:
+      - "Content-Type: text/html; charset=utf-8"
+    statusCode: 404
+
+# ---------------------------------------------------------------------------
+# 5) Cấu hình plugin LLM
+# ---------------------------------------------------------------------------
+plugin:
+  llmProvider: "gemini"
+  llmModel: "gemini-1.5-flash"
+  googleAPIKey: "AIzaSyBsVCEFzQG82g6M-7PRcXndRDzzbpRv6ZY"
+

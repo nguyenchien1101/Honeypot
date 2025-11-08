@@ -1,0 +1,27 @@
+apiVersion: "v1"
+protocol: "tcp"
+address: ":3389"
+description: "RDP Honeypot (Remote Desktop)"
+
+# Beelzebub sẽ tự động ghi lại các tương tác (dữ liệu gửi/nhận).
+# Đối với một honeypot RDP đơn giản, việc chỉ bắt và ghi lại kết nối là đủ
+# để phát hiện các hoạt động quét cổng và dò mật khẩu.
+#
+# Một honeypot RDP phức tạp hơn sẽ cần logic chuyên biệt để mô phỏng
+# toàn bộ quá trình handshake và giao diện đăng nhập, điều này thường
+# nằm ngoài khả năng của một file cấu hình đơn giản.
+commands:
+  # ---------------------------------------------------------------------------
+  # 1) Gửi một "Server Greet" giả để lừa các máy quét RDP
+  #    Regex "^.$" sẽ khớp với byte đầu tiên được gửi từ client.
+  # ---------------------------------------------------------------------------
+  - regex: "^.$"
+    # Đây là một phần của gói tin "Connection Confirm" trong RDP
+    # để làm cho honeypot có vẻ thật hơn với các công cụ quét tự động.
+    banner: "\x03\x00\x00\x13\x0e\xe0\x00\x00\x00\x00\x00\x01\x00\x08\x00\x03\x00\x00\x00"
+    
+  # ---------------------------------------------------------------------------
+  # 2) Bắt tất cả các dữ liệu khác được gửi đến và ghi log
+  # ---------------------------------------------------------------------------
+  - regex: "^.*$"
+    handler: "" # Không cần trả về gì, chỉ cần ghi log

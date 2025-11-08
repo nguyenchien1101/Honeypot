@@ -1,0 +1,61 @@
+# smtp-vnpt-llm.yml
+
+apiVersion: "v1"
+protocol: "tcp"
+address: ":25"
+description: "Interactive VNPT SMTP Spam Trap (LLM-Powered)"
+
+# Banner chào mừng để máy chủ "chào" client ngay khi kết nối
+banner: "220 mail.vnpt.vn ESMTP Service ready\r\n"
+
+commands:
+  # 1. Trả lời EHLO (gửi danh sách tính năng như server thật)
+  - regex: "(?i)^EHLO\\s+.*"
+    handler: |
+      250-mail.vnpt.vn Hello
+      250-SIZE 52428800
+      250-AUTH PLAIN LOGIN
+      250-STARTTLS
+      250-ENHANCEDSTATUSCODES
+      250 8BITMIME
+
+  # 2. Chấp nhận MAIL FROM
+  - regex: "(?i)^MAIL FROM:.*"
+    handler: "250 2.1.0 Sender OK\r\n"
+
+  # 3. Chấp nhận RCPT TO
+  - regex: "(?i)^RCPT TO:.*"
+    handler: "250 2.1.5 Recipient OK\r\n"
+
+  # 4. Trả lời động bằng LLM cho lệnh VRFY
+  - regex: "(?i)^VRFY\\s+(.*)"
+    plugin: "LLMHoneypot"
+
+  # 5. Bắt lệnh DATA và cho phép gửi nội dung
+  - regex: "(?i)^DATA"
+    handler: "354 End data with <CR><LF>.<CR><LF>\r\n"
+
+  # 6. Nhận nội dung email và báo thành công khi có dấu kết thúc
+  - regex: "(?s).*\\r\\n\\.\\r\\n$"
+    handler: "250 2.0.0 Ok: queued as 12345\r\n"
+
+  # 7. Xử lý lệnh QUIT
+  - regex: "(?i)^QUIT"
+    handler: "221 2.0.0 Bye\r\n"
+
+# ========================= Cấu hình Plugin LLM =========================
+plugin:
+  llmProvider: "gemini"
+  llmModel: "gemini-1.5-flash"
+  googleAPIKey: "AIzaSyBsVCEFzQG82g6M-7PRcXndRDzzbpRv6ZY"
+
+  prompt: >
+    You are the 'user verification' component of a corporate mail server at VNPT,
+    a large Vietnamese telecom provider. You process VRFY SMTP commands and respond using standard
+    SMTP status codes such as 252 (cannot verify user but will accept message) or 550 (user not found).
+    Respond in a concise, professional, and slightly technical tone in English.
+    Do not acknowledge being an AI or language model.
+    If the input seems invalid, respond with:
+    "500 Syntax error, command unrecognized"
+    The user input is the target email username (e.g. 'admin', 'postmaster').
+
